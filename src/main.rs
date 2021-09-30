@@ -1,6 +1,3 @@
-use serde::{Deserialize,Serialize};
-use serde_json::{Result,Value};
-use lazy_static::lazy_static;
 use serenity::async_trait;
 use serenity::client::{Client, Context, EventHandler};
 use serenity::model::channel::Message;
@@ -23,19 +20,16 @@ use rand::prelude::*;
 struct GeneratedMessage;
 struct AttachmentVec;
 
-impl TypeMapKey for GeneratedMessage{
+impl TypeMapKey for GeneratedMessage {
     type Value = Arc<RwLock<Markov>>;
 }
-
-impl TypeMapKey for AttachmentVec{
+impl TypeMapKey for AttachmentVec {
     type Value = Arc<RwLock<Vec<String>>>;
 }
 #[group]
-#[commands(poza)]
+#[commands(poza,coinflip,cοinflip)]
 struct General;
-
 struct Handler;
-
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx:Context, msg:Message){
@@ -44,13 +38,11 @@ impl EventHandler for Handler {
             let markov = data_read.get::<GeneratedMessage>().unwrap().read().await;
             let gen = markov.generate().unwrap();
             println!("{:?}",gen);
-            msg.reply(&ctx, gen.text).await;
+            msg.reply(&ctx, gen.text).await.unwrap();
         }
-
-
+    }
 }
 
-}
 #[tokio::main]
 async fn main() {
     let file = File::open("markov_saved.json").unwrap();
@@ -58,7 +50,7 @@ async fn main() {
     let importdata:ImportExport = serde_json::from_reader(file).unwrap();
     let attachmentvec:Vec<String> = serde_json::from_reader(attachmentfile).unwrap();
     //let mut markov = Markov::from_export(data);
-//    markov
+    //    markov
     let framework = StandardFramework::new()
         .configure(|c| c.prefix("~")) // set the bot's prefix to "~"
         .group(&GENERAL_GROUP);
@@ -76,13 +68,13 @@ async fn main() {
         data.insert::<AttachmentVec>(Arc::new(RwLock::new(attachmentvec)));
         let mut a = data.get::<GeneratedMessage>().unwrap().write().await;
         a.set_filter(|r| {
-        // A minimal relative score and number of references
-        // The thresholds are relative to your input
-        r.score <=50 && r.score >=5 && r.refs.len() > 3
-        && r.text.len() <= 600
+            // A minimal relative score and number of references
+            // The thresholds are relative to your input
+            r.score <=50 && r.score >=5 && r.refs.len() > 3
+                && r.text.len() <= 600
         })
         .set_max_tries(10000);
-    }
+        }
     // start listening for events by starting a single shard
     if let Err(why) = client.start().await {
         println!("An error occurred while running the client: {:?}", why);
@@ -92,7 +84,7 @@ async fn main() {
 #[command]
 async fn poza(ctx: &Context, msg: &Message) -> CommandResult {
     let data_read = ctx.data.read().await;
-    let markov = data_read.get::<GeneratedMessage>().unwrap().read().await;
+    //let markov = data_read.get::<GeneratedMessage>().unwrap().read().await;
     let attachvec = data_read.get::<AttachmentVec>().unwrap().read().await;
     let mut attach:Vec<&String> = attachvec.choose_multiple(&mut rand::thread_rng(), 1).collect();
     let pic = attach.pop().unwrap();
@@ -100,3 +92,21 @@ async fn poza(ctx: &Context, msg: &Message) -> CommandResult {
     msg.reply(ctx, pic).await?;
     Ok(())
 }
+
+#[command]
+async fn coinflip(ctx: &Context, msg: &Message) -> CommandResult {
+    let outcomes = vec!["cap".to_string(),"pajura".to_string()];
+    let mut outcome:Vec<&String> = outcomes.choose_multiple(&mut rand::thread_rng(), 1).collect();
+    let answer = outcome.pop().unwrap();
+    println!("{}",answer);
+    msg.reply(ctx,answer).await?;
+    Ok(())
+}
+
+#[command]
+async fn cοinflip(ctx: &Context, msg: &Message) -> CommandResult {
+    println!("{}","cap");
+    msg.reply(ctx,"cap".to_string()).await?;
+    Ok(())
+}
+
